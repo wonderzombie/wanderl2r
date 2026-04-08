@@ -2,7 +2,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use wanderrust::light::LightLevel;
-use wanderrust::tilemap::{Dimensions, SavedTilemap, StratumKind};
+use wanderrust::tilemap::{Dimensions, SavedTilemap};
 
 use clap::Parser;
 use wanderrust::cell::Cell;
@@ -110,10 +110,11 @@ fn get_cell(tile_info: &Map<String, Value>) -> Option<Cell> {
 fn fill_map(
     atlas_to_tile_idx: &HashMap<usize, TileIdx>,
     cell_to_atlas_idx: HashMap<Cell, usize>,
-) -> (Vec<(TileIdx, StratumKind)>, Dimensions) {
+) -> (Vec<TileIdx>, Dimensions) {
     let dims = calculate_dimensions(&cell_to_atlas_idx);
+    let ntiles = dims.height * dims.width;
 
-    let out: Vec<(TileIdx, StratumKind)> = (0..dims.ntiles() as usize)
+    let out: Vec<TileIdx> = (0..ntiles as usize)
         .map(|idx| {
             let cell = dims.idx_to_cell(idx as u32);
             // We are effectively joining these two HashMaps. However, we also
@@ -122,13 +123,13 @@ fn fill_map(
             cell_to_atlas_idx
                 .get(&cell)
                 .and_then(|&src_idx| atlas_to_tile_idx.get(&src_idx))
-                .map(|&tile_idx| (tile_idx, StratumKind::default()))
+                .map(|tile_idx| *tile_idx)
                 .unwrap_or_default()
         })
         .collect();
 
     let mut tally: HashMap<TileIdx, usize> = HashMap::new();
-    for (tile_idx, _) in &out {
+    for tile_idx in &out {
         *tally.entry(*tile_idx).or_default() += 1;
     }
     println!("• tile breakdown: {:#?}", tally);
